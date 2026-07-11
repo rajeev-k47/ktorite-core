@@ -22,7 +22,7 @@ class ApplicationTest {
     fun adminEndpointReturnsOk() = testApplication {
         application {
             module(KtoriteConfig().apply {
-                enableAdmin = true
+                developmentMode = true
                 database {
                     url = "jdbc:h2:mem:test;DB_CLOSE_DELAY=-1"
                 }

@@ -23,6 +23,8 @@ class KtoriteConfig {
     internal val models = mutableListOf<Table>()
     internal val migrations = mutableListOf<Migration>()
 
+    val registeredModels: List<Table> get() = models
+
     fun routing(block: Route.() -> Unit) {
         routes += block
     }

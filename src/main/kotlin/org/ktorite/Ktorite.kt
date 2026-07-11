@@ -18,19 +18,28 @@ import io.ktor.server.sessions.*
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.SchemaUtils
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import kotlinx.coroutines.runBlocking
 import org.ktorite.auth.installSessionAuth
+import org.ktorite.auth.UserSession
 import org.ktorite.config.KtoriteConfig
 import org.ktorite.db.installDatabase
 import org.ktorite.error.installErrorHandler
 import org.ktorite.migration.runMigrations
 import org.ktorite.plugins.configureSerialization
+import java.util.function.Function
 
 
 object Ktorite {
     fun start(configure: KtoriteConfig.() -> Unit) {
         val config = KtoriteConfig().apply(configure)
-        embeddedServer(Netty, port = config.port) {
-            module(config)
+        val appConfig = serverConfig {
+            developmentMode = config.developmentMode
+            module {
+                module(config)
+            }
+        }
+        embeddedServer(Netty, appConfig) {
+            connectors.add(EngineConnectorBuilder().apply { port = config.port })
         }.start(wait = true)
     }
 }
@@ -139,9 +148,12 @@ fun Application.module(config: KtoriteConfig) {
                 "Development mode with admin requires session auth. Configure auth { session { ... } }"
             }
             try {
+                val sessionValidator = Function<ApplicationCall, Boolean> { call ->
+                    runBlocking { call.sessions.get<UserSession>() != null }
+                }
                 val clazz = Class.forName("org.ktorite.admin.KtoriteAdminPanel")
-                val method = clazz.getMethod("install", Application::class.java, List::class.java, Database::class.java, String::class.java, String::class.java)
-                method.invoke(null, application, config.models, db, sessionCfg.loginPath, sessionCfg.sessionName)
+                val method = clazz.getMethod("install", Application::class.java, List::class.java, Database::class.java, String::class.java, java.util.function.Function::class.java)
+                method.invoke(null, application, config.models, db, sessionCfg.loginPath, sessionValidator)
             } catch (_: ClassNotFoundException) {
                 error("Admin panel requires ktorite-admin on classpath.")
             }

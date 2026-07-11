@@ -23,7 +23,10 @@ fun main(args: Array<String>) {
     val dbPass = props.getProperty("db.password") ?: ""
 
     val db = Database.connect(url, driver, dbUser, dbPass)
-    transaction(db) { SchemaUtils.createMissingTablesAndColumns(UserTable) }
+    transaction(db) {
+        @Suppress("DEPRECATION")
+        SchemaUtils.createMissingTablesAndColumns(UserTable)
+    }
     UserTable.createSuperuser(db, username, password)
     println("Superuser '$username' created.")
 }
